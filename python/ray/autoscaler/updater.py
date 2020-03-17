@@ -190,21 +190,11 @@ class SSHCommandRunner:
         ]
 
     def get_node_ip(self):
-        if self.use_internal_ip:
-            return self.provider.internal_ip(self.node_id)
-        else:
-            return self.provider.external_ip(self.node_id)
+        raise DeprecationWarning("This is unused and can be deprecated?")
 
     def wait_for_ip(self, deadline):
-        while time.time() < deadline and \
-                not self.provider.is_terminated(self.node_id):
-            logger.info(self.log_prefix + "Waiting for IP...")
-            ip = self.get_node_ip()
-            if ip is not None:
-                return ip
-            time.sleep(10)
-
-        return None
+        ip_getter = ProviderIpGetter(self.log_prefix, self.node_id, self.provider, self.use_internal_ip)
+        return ip_getter.wait_for_ip(deadline=deadline)
 
     def set_ssh_ip_if_required(self):
         if self.ssh_ip is not None:
@@ -316,19 +306,27 @@ class NodeUpdater:
                  ray_start_commands,
                  runtime_hash,
                  process_runner=subprocess,
-                 use_internal_ip=False):
+                 use_internal_ip=False,
+                 remove_node_from_known_hosts_before_use=True):
+        """
+        Args:
+            remove_node_from_known_hosts_before_use (bool): If True, node ip will be removed from ssh-keygen known_hosts
+                                                            before connecting in order to avoid man-in-the-middle
+                                                            warnings
+        """
 
+        self.use_internal_ip = use_internal_ip
         self.log_prefix = "NodeUpdater: {}: ".format(node_id)
         if provider_config["type"] == "kubernetes":
             self.cmd_runner = KubernetesCommandRunner(
                 self.log_prefix, provider.namespace, node_id, auth_config,
                 process_runner)
         else:
-            use_internal_ip = (use_internal_ip or provider_config.get(
+            self.use_internal_ip = (self.use_internal_ip or provider_config.get(
                 "use_internal_ips", False))
             self.cmd_runner = SSHCommandRunner(
                 self.log_prefix, node_id, provider, auth_config, cluster_name,
-                process_runner, use_internal_ip)
+                process_runner, self.use_internal_ip)
 
         self.daemon = True
         self.process_runner = process_runner
@@ -342,6 +340,7 @@ class NodeUpdater:
         self.setup_commands = setup_commands
         self.ray_start_commands = ray_start_commands
         self.runtime_hash = runtime_hash
+        self.remove_node_from_known_hosts_before_use = remove_node_from_known_hosts_before_use
 
     def run(self):
         logger.info(self.log_prefix +
@@ -411,6 +410,9 @@ class NodeUpdater:
         assert False, "Unable to connect to node"
 
     def do_update(self):
+        if self.remove_node_from_known_hosts_before_use:
+            self.remove_node_from_known_hosts()
+
         self.provider.set_node_tags(
             self.node_id, {TAG_RAY_NODE_STATUS: STATUS_WAITING_FOR_SSH})
         deadline = time.time() + NODE_START_WAIT_S
@@ -453,9 +455,72 @@ class NodeUpdater:
                     "Syncing {} from {}...".format(source, target))
         self.cmd_runner.run_rsync_down(source, target)
 
+    def remove_node_from_known_hosts(self):
+        logger.info(self.log_prefix + "Removing node IP from known_hosts to avoid man in middle warnings")
+        logger.info(self.log_prefix + "Getting node ip for removal")
+        node_ip = ProviderIpGetter(self.log_prefix, self.node_id, self.provider, self.use_internal_ip)\
+            .wait_for_ip(timeout=NODE_START_WAIT_S)
+        logger.info(self.log_prefix + "Found node ip {} for removal from known_hosts".format(node_ip))
+        try:
+            forget_known_host(node_ip)
+        except TimeoutError as e:
+            logger.info(self.log_prefix + "Unable to remove {} from ssh-keygen known_hosts - command timed out")
+        except FileNotFoundError as e:
+            logger.info(self.log_prefix + "Unable to remove {} from ssh-keygen known_hosts - ssh-keygen not found")
+
 
 class NodeUpdaterThread(NodeUpdater, Thread):
     def __init__(self, *args, **kwargs):
         Thread.__init__(self)
         NodeUpdater.__init__(self, *args, **kwargs)
         self.exitcode = -1
+
+
+class ProviderIpGetter:
+    """Helper to get IP address from node_id from the cloud provider"""
+    def __init__(self, log_prefix, node_id, provider, use_internal_ip):
+        self.log_prefix = log_prefix
+        self.node_id = node_id
+        self.provider = provider
+        self.use_internal_ip = use_internal_ip
+
+    def wait_for_ip(self, timeout=None, deadline=None, sleep_between_gets=10):
+        """
+        Returns node IP address or None if it is not found.
+
+        Can optionally be constrained to a timelimit, either by a timeout duration or
+        an absolute deadline
+
+        Args:
+            timeout (int): Time in seconds to wait for the ip before returning None
+            deadline (int): The absolute time (compared to time.time()) after which
+                            the request is considered timed out and returns None
+            sleep_between_gets (int): Time in integer seconds to sleep between attempts
+                                      to get IP address
+
+        Returns:
+              (str or None): IP Address, or None if it cannot be obtained
+        """
+        if timeout and deadline:
+            raise ValueError("At most one of timeout and deadline can be specified")
+        else:
+            if timeout:
+                deadline = time.time() + timeout
+
+        while time.time() < deadline and not self.provider.is_terminated(self.node_id):
+            logger.info(self.log_prefix + "Waiting for IP...")
+            ip = self.get_ip()
+            if ip is not None:
+                return ip
+            time.sleep(sleep_between_gets)
+        return None
+
+    def get_ip(self):
+        if self.use_internal_ip:
+            return self.provider.internal_ip(self.node_id)
+        else:
+            return self.provider.external_ip(self.node_id)
+
+
+def forget_known_host(host, timeout=3):
+    subprocess.run(["ssh-keygen", "-R", host], timeout=timeout)
