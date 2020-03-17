@@ -9,9 +9,9 @@ from googleapiclient import discovery, errors
 
 logger = logging.getLogger(__name__)
 
-crm = discovery.build("cloudresourcemanager", "v1")
-iam = discovery.build("iam", "v1")
-compute = discovery.build("compute", "v1")
+crm = discovery.build("cloudresourcemanager", "v1", cache_discovery=False)
+iam = discovery.build("iam", "v1", cache_discovery=False)
+compute = discovery.build("compute", "v1", cache_discovery=False)
 
 VERSION = "v1"
 

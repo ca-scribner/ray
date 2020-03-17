@@ -43,7 +43,7 @@ class GCPNodeProvider(NodeProvider):
         NodeProvider.__init__(self, provider_config, cluster_name)
 
         self.lock = RLock()
-        self.compute = discovery.build("compute", "v1")
+        self.compute = discovery.build("compute", "v1", cache_discovery=False)
 
         # Cache of node objects from the last nodes() call. This avoids
         # excessive DescribeInstances requests.
