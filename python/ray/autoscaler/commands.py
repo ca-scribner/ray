@@ -436,7 +436,7 @@ def load_config_file(config_file, overrides=None, bootstrap=True):
         overrides = {}
     config = yaml.safe_load(open(config_file).read())
 
-    for name, value in overrides:
+    for name, value in overrides.items():
         if value is not None:
             config[name] = value
 
