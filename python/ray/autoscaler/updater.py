@@ -453,10 +453,22 @@ class NodeUpdater:
             for cmd in self.ray_start_commands:
                 self.cmd_runner.run(cmd)
 
-    def rsync_up(self, source, target):
+    def rsync_up(self, source, target, push_to_container=None):
+        """
+        push_to_container (str): If not None, push source to both target and to /root within a container on target
+                                 named by push_to_container
+        """
         logger.info(self.log_prefix +
                     "Syncing {} to {}...".format(source, target))
         self.cmd_runner.run_rsync_up(source, target)
+        if push_to_container:
+            # TODO(SCRIBNER): ray submit looks for script in container/root, so put it there for now.  Need more robust
+            #  solution?
+            # Get only the filename so we can put it in a container-specific location
+            filename = os.path.basename(target)
+            cpath = push_to_container + ":" + os.path.join("/root", filename)
+            logger.info(self.log_prefix + f"syncing file from {target} to container:{cpath}")
+            self.cmd_runner.run_cp_to_container(target, cpath)
 
     def rsync_down(self, source, target):
         logger.info(self.log_prefix +
