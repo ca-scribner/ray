@@ -473,7 +473,8 @@ def rsync(config_file,
           target,
           override_cluster_name,
           down,
-          all_nodes=False):
+          all_nodes=False,
+          push_to_container=None):
     """Rsyncs files.
 
     Arguments:
@@ -483,6 +484,8 @@ def rsync(config_file,
         override_cluster_name: set the name of the cluster
         down: whether we're syncing remote -> local
         all_nodes: whether to sync worker nodes in addition to the head node
+        push_to_container (str): if not none and down==False, cp source file into existing docker container on target
+                                 with this name
     """
     assert bool(source) == bool(target), (
         "Must either provide both or neither source and target.")
@@ -522,11 +525,13 @@ def rsync(config_file,
             )
             if down:
                 rsync = updater.rsync_down
+                rsync_adtl_args = {}
             else:
                 rsync = updater.rsync_up
+                rsync_adtl_args = {'push_to_container': push_to_container}
 
             if source and target:
-                rsync(source, target)
+                rsync(source, target, **rsync_adtl_args)
             else:
                 updater.sync_file_mounts(rsync)
 

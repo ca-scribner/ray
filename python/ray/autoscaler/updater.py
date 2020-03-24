@@ -286,6 +286,14 @@ class SSHCommandRunner:
             "{}@{}:{}".format(self.ssh_user, self.ssh_ip, source), target
         ])
 
+    # TODO(SCRIBNER): Feels out of place.  Can this somehow go in docker services?
+    def run_cp_to_container(self, source, target):
+        """
+        Copies a file between host and docker container.  One of source and target must be with respect to a container
+        """
+        cmd = "docker cp {} {}".format(source, target)
+        self.run(cmd)
+
     def remote_shell_command_str(self):
         return "ssh -o IdentitiesOnly=yes -i {} {}@{}\n".format(
             self.ssh_private_key, self.ssh_user, self.ssh_ip)

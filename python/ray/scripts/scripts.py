@@ -10,7 +10,8 @@ import time
 import ray.services as services
 from ray.autoscaler.commands import (
     attach_cluster, exec_cluster, create_or_update_cluster, monitor_cluster,
-    rsync, teardown_cluster, get_head_node_ip, kill_node, get_worker_node_ips)
+    rsync, teardown_cluster, get_head_node_ip, kill_node, get_worker_node_ips,
+    load_config_file)
 import ray.ray_constants as ray_constants
 import ray.utils
 from ray.projects.scripts import project_cli, session_cli
@@ -772,7 +773,14 @@ def submit(cluster_config_file, docker, screen, tmux, stop, start,
                                  True, cluster_name)
 
     target = os.path.join("~", os.path.basename(script))
-    rsync(cluster_config_file, script, target, cluster_name, down=False)
+
+    if docker:
+        overrides = {'cluster_name': cluster_name}
+        config = load_config_file(cluster_config_file, overrides=overrides)
+        # TODO(SCRIBNER): Handle head/worker container name properly?  Are those separately configurable?
+        container_name = config["docker"]["container_name"]
+
+    rsync(cluster_config_file, script, target, cluster_name, down=False, push_to_container=container_name)
 
     command_parts = ["python", target]
     if args is not None:
