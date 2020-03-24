@@ -175,6 +175,7 @@
                 },
                 "container_name": {
                     "type": "string",
+                    "description": "the name applied to all active containers",
                     "default": "ray_docker"
                 },
                 "pull_before_run": {
