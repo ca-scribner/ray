@@ -205,6 +205,11 @@
                 "worker_run_options": {
                     "type": "array",
                     "description": "analogous to head_run_options"
+                },
+                "pull_initialization_command": {
+                    "type": "string",
+                    "description": "command prepended to any docker pull.  useful for authenticating a private repo",
+                    "default": ""
                 }
             }
         },

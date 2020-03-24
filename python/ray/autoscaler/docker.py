@@ -35,7 +35,10 @@ def dockerize_if_needed(config):
     docker_mounts = {dst: dst for dst in config["file_mounts"]}
 
     if docker_pull:
-        docker_pull_cmd = "docker pull {}".format(docker_image)
+        docker_pull_initialization_cmd = config["docker"].get("pull_initialization_command", "")
+        if docker_pull_initialization_cmd:  # Or could just put a "true" at the front and not worry about this...
+            docker_pull_initialization_cmd += " && "
+        docker_pull_cmd = "{}docker pull {}".format(docker_pull_initialization_cmd, docker_image)
         config["initialization_commands"].append(docker_pull_cmd)
 
     head_docker_start = docker_start_cmds(ssh_user, head_docker_image,
