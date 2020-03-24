@@ -456,11 +456,10 @@ class NodeUpdater:
         self.cmd_runner.run_rsync_down(source, target)
 
     def remove_node_from_known_hosts(self):
-        logger.info(self.log_prefix + "Removing node IP from known_hosts to avoid man in middle warnings")
-        logger.info(self.log_prefix + "Getting node ip for removal")
+        logger.info(self.log_prefix + "Removing node IP from known_hosts to avoid man in middle warnings...")
         node_ip = ProviderIpGetter(self.log_prefix, self.node_id, self.provider, self.use_internal_ip)\
             .wait_for_ip(timeout=NODE_START_WAIT_S)
-        logger.info(self.log_prefix + "Found node ip {} for removal from known_hosts".format(node_ip))
+        logger.info(self.log_prefix + "Removing node ip {} from known_hosts".format(node_ip))
         try:
             forget_known_host(node_ip)
         except TimeoutError as e:
