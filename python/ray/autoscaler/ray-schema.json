@@ -146,7 +146,7 @@
                 },
                 "additional_gcp_service_account_roles": {
                     "type": "array",
-                    "description": "additional roles added to service account used by all nodes"
+                    "description": "additional roles added to service account used by gcp all nodes"
                 }
             }
         },
