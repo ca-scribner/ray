@@ -170,7 +170,9 @@ class SSHCommandRunner:
         OPTS = [
             ("ConnectTimeout", "{}s".format(connect_timeout)),
             ("StrictHostKeyChecking", "no"),
-            ("ControlMaster", "auto"),
+            # TODO (SCRIBNER): This somehow messes up authentication with google container registry via
+            #  docker-credential-gcr.  Not sure how...  Disabled for now
+            ("ControlMaster", "no"),
             ("ControlPath", "{}/%C".format(self.ssh_control_path)),
             ("ControlPersist", "10s"),
             # Try fewer extraneous key pairs.
