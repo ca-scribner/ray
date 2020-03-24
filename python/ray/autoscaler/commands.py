@@ -31,14 +31,13 @@ def create_or_update_cluster(config_file, override_min_workers,
                              override_max_workers, no_restart, restart_only,
                              yes, override_cluster_name):
     """Create or updates an autoscaling Ray cluster from a config json."""
-    config = yaml.safe_load(open(config_file).read())
-    if override_min_workers is not None:
-        config["min_workers"] = override_min_workers
-    if override_max_workers is not None:
-        config["max_workers"] = override_max_workers
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
-    config = _bootstrap_config(config)
+
+    overrides = {'min_workers': override_min_workers,
+                 'max_workers': override_max_workers,
+                 'cluster_name': override_cluster_name,
+                 }
+    config = load_config_file(config_file, overrides=overrides)
+
     get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
                             override_cluster_name)
 
@@ -70,9 +69,9 @@ def teardown_cluster(config_file, yes, workers_only, override_cluster_name,
                      keep_min_workers):
     """Destroys all nodes of a Ray cluster described by a config json."""
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides, bootstrap=False)
+
     config = fillout_defaults(config)
     validate_config(config)
 
@@ -119,10 +118,8 @@ def teardown_cluster(config_file, yes, workers_only, override_cluster_name,
 def kill_node(config_file, yes, hard, override_cluster_name):
     """Kills a random Raylet worker."""
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
-    config = _bootstrap_config(config)
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides)
 
     confirm("This will kill a node in your cluster", yes)
 
@@ -368,10 +365,8 @@ def exec_cluster(config_file,
     """
     assert not (screen and tmux), "Can specify only one of `screen` or `tmux`."
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
-    config = _bootstrap_config(config)
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides)
 
     head_node = _get_head_node(
         config, config_file, override_cluster_name, create_if_needed=start)
@@ -436,6 +431,20 @@ def exec_cluster(config_file,
         provider.cleanup()
 
 
+def load_config_file(config_file, overrides=None, bootstrap=True):
+    if not overrides:
+        overrides = {}
+    config = yaml.safe_load(open(config_file).read())
+
+    for name, value in overrides:
+        if value is not None:
+            config[name] = value
+
+    if bootstrap:
+        config = _bootstrap_config(config)
+    return config
+
+
 def _exec(updater, cmd, screen, tmux, port_forward=None, with_output=False):
     if cmd:
         if screen:
@@ -478,10 +487,8 @@ def rsync(config_file,
     assert bool(source) == bool(target), (
         "Must either provide both or neither source and target.")
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
-    config = _bootstrap_config(config)
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides)
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
@@ -530,9 +537,8 @@ def rsync(config_file,
 def get_head_node_ip(config_file, override_cluster_name):
     """Returns head node IP for given configuration file if exists."""
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides, bootstrap=False)
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
@@ -550,9 +556,8 @@ def get_head_node_ip(config_file, override_cluster_name):
 def get_worker_node_ips(config_file, override_cluster_name):
     """Returns worker node IPs for given configuration file."""
 
-    config = yaml.safe_load(open(config_file).read())
-    if override_cluster_name is not None:
-        config["cluster_name"] = override_cluster_name
+    overrides = {'cluster_name': override_cluster_name}
+    config = load_config_file(config_file, overrides=overrides, bootstrap=False)
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
