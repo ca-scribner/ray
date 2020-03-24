@@ -1,0 +1,5 @@
+# Required always or just gcp?
+cryptography
+
+# Required for gcp
+google-api-python-client
