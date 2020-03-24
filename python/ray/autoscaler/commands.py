@@ -46,6 +46,8 @@ def _bootstrap_config(config):
     config = fillout_defaults(config)
 
     hasher = hashlib.sha1()
+    # TODO(SCRIBNER): Hashing here means we if we change bootstrap_config code and reuse an input file we don't enter
+    #  the changed bootstrap_config code.  Is that ok?
     hasher.update(json.dumps([config], sort_keys=True).encode("utf-8"))
     cache_key = os.path.join(tempfile.gettempdir(),
                              "ray-config-{}".format(hasher.hexdigest()))

@@ -29,6 +29,11 @@ KUBECTL_RSYNC = os.path.join(
 
 
 def with_interactive(cmd):
+    # TODO(SCRIBNER):  including -i in bash causes the following output in "ray up" logs:
+    #       bash: cannot set terminal process group (1595): Inappropriate ioctl for device
+    #       bash: no job control in this shell
+    #   Is there a reason to make the shell interactive here?  Removing -i fixes issue, but not
+    #   sure if it causes others.
     force_interactive = ("true && source ~/.bashrc && "
                          "export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && ")
     return ["bash", "--login", "-c", "-i", quote(force_interactive + cmd)]
@@ -272,6 +277,9 @@ class SSHCommandRunner:
             else:
                 raise
 
+    # TODO(SCRIBNER): Is there a non-rsync version that can work for GCP container optimized storage?
+    #  Add a try/except to use scp?
+    #  This is moot if image running the container needs Ray anyway
     def run_rsync_up(self, source, target):
         self.set_ssh_ip_if_required()
         self.process_runner.check_call([

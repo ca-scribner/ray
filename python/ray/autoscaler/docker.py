@@ -17,6 +17,8 @@ def dockerize_if_needed(config):
     cname = config["docker"].get("container_name")
     run_options = config["docker"].get("run_options", [])
 
+    # TODO(SCRIBNER): Worker and head can have different images!  These override the base image, but the base image
+    #  still needs something to indicate we're using docker at all (guess it could just be "true")
     head_docker_image = config["docker"].get("head_image", docker_image)
     head_run_options = config["docker"].get("head_run_options", [])
 
