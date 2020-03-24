@@ -143,6 +143,10 @@
                 "project_id": {
                     "type": ["string", "null"],
                     "description": "GCP globally unique project id"
+                },
+                "additional_gcp_service_account_roles": {
+                    "type": "array",
+                    "description": "additional roles added to service account used by all nodes"
                 }
             }
         },

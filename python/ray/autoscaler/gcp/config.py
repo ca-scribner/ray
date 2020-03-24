@@ -165,9 +165,20 @@ def _configure_iam_role(config):
 
     assert service_account is not None, "Failed to create service account"
 
-    _add_iam_policy_binding(service_account, DEFAULT_SERVICE_ACCOUNT_ROLES)
+    additional_roles = config["provider"].get("additional_gcp_service_account_roles", tuple())
+    roles_to_add = DEFAULT_SERVICE_ACCOUNT_ROLES + tuple(additional_roles)
+    _add_iam_policy_binding(service_account, roles_to_add)
 
     config["head_node"]["serviceAccounts"] = [{
+        "email": service_account["email"],
+        # NOTE: The amount of access is determined by the scope + IAM
+        # role of the service account. Even if the cloud-platform scope
+        # gives (scope) access to the whole cloud-platform, the service
+        # account is limited by the IAM rights specified below.
+        "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
+    }]
+
+    config["worker_nodes"]["serviceAccounts"] = [{
         "email": service_account["email"],
         # NOTE: The amount of access is determined by the scope + IAM
         # role of the service account. Even if the cloud-platform scope
