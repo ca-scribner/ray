@@ -49,8 +49,10 @@ def _bootstrap_config(config):
     hasher.update(json.dumps([config], sort_keys=True).encode("utf-8"))
     cache_key = os.path.join(tempfile.gettempdir(),
                              "ray-config-{}".format(hasher.hexdigest()))
-    if os.path.exists(cache_key):
-        return json.loads(open(cache_key).read())
+    # DEBUG(SCRIBNER): To be removed
+    # TODO(SCRIBNER): For testing, disable reloading old files
+    # if os.path.exists(cache_key):
+    #     return json.loads(open(cache_key).read())
     validate_config(config)
 
     importer = NODE_PROVIDERS.get(config["provider"]["type"])
